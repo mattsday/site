@@ -1,0 +1,42 @@
+<h1 style="blog_title">Demystifying 802.1X - Part 4 - Security Group Tagging</h1>
+<p>In an ongoing series of blog entries, I've been talking about 802.1X, starting with the <a href="blog?entry=2014-07-10">basics</a> and moving on to <a href="blog?entry=2014-07-14">VLAN override</a> and <a href="blog?entry=2014-07-18">dACLs</a> as part of an authorization strategy.</p>
+<p>This time round I'm going to finish off Authorization and cover Security Group Tagging, a neat way that completely separates security from my network topology.</p>
+<h2>Authorization options</h2>
+<ul><li>VLANs</li><li>Downloadable/Dynamic ACLs</li><li>Security Group Tagging</li></ul>
+<p>This article will cover the final option, Security Group Tagging.</p>
+<h2>Security Group Tagging</h2>
+<p>Security Group Tagging is a means to provide identity within a network entirely topology-free. Unlike VLANs or using dACLs, SGTs are easier to implement, keep up to date and map to the businesses security policy.</p>
+<p>This is achieved by tagging each frame with a <em>security group tag</em>. These tags are assigned at layer 2 and transported within an <a href="http://en.wikipedia.org/wiki/IEEE_802.1AE">IEEE 802.1AE</a> frame.</p>
+<p>The classic example is that a AAA server provides a tag to the network access device (i.e. switch) which identifies that user. Although the tag itself is numerical, the management system (such as ISE) abstracts this in to a canonical name.</p>
+<p>Let's take the same example as before:</p>
+<p style="text-align: center;"><img src="images/blog-access-topology" alt="Topology showing Regular Users, HR Directors and Guest Users going across a network to HR Servers, Public Internet and Intranet Services" /></p>
+
+<h2>Corporate Policy</h2>
+<table style="text-align: center; margin-left: auto; margin-right: auto; border: 1px solid black;">
+<tr><th>&nbsp;</th><th>HR Server</th><th>Public Services</th><th>Intranet Services</th></tr>
+<tr><th>Regular User</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>HR Director</th><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>Guest User</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/cross" alt="X" /></td></tr>
+</table>
+<p style="padding-top: 1em;">Note how there is no network topology information above. These users could be in the same subnets or VLANs - their identity is totally separate from my network infrastructure.</p>
+<p>Instead, each user is tagged by the network access device. The services are also tagged either using physical infrastructure or a virtual switch such as the <a href="http://www.cisco.com/c/en/us/products/switches/nexus-1000v-switch-vmware-vsphere/index.html">Nexus 1000V</a>.</p>
+<h2>Tag Mapping</h2>
+<p>The Identity Services Engine allows you to create a full matrix based on those interaction points. For example:</p>
+<p style="text-align: center;"><img style="width: 90%;" src="images/blog-ise-cts-matrix" alt="Matrix showing TrustSec configuration" /></p>
+<p>The business policy above is directly mapped in to this matrix. Any empty cells will use my default policy (in this case fully permitted). This way I can blend existing ACLs and Firewalls with the enhanced security of TrustSec.</p>
+<h2>Building Rules</h2>
+<p>The rules in the screenshot above (for example "permit_https" from HR_Director to HR_Server) are topology-independent. For example:</p>
+<pre>ip access-list role-based permit_https
+	permit tcp eq 443
+	deny ip</pre>
+<p>A second rule might allow anything:</p>
+<pre>ip access-list role-based full_access
+	permit ip</pre>
+<p>These rules are automatically populated on all TrustSec devices and expanded on a per-session basis, allowing both scale and dynamic security.</p>
+<h2>Manually Defining Rules</h2>
+<p>Rules can also be manually defined. Assuming the above example where HR_Director is tagged as <em>2</em> and HR_Server has the tag of <em>3</em> then a rule controlling that interaction would appear as follows:</p>
+<pre>cts role-based permissions default full_access
+cts role-based permissions from 2 to 3 permit_https</pre>
+<p>Of course it's much easier to manage this centrally via ISE or similar, but it's not a requirement and you can implement TrustSec today on almost any Cisco switch, router, firewall or Wireless LAN controller.</p>
+<h2>Supporting Mixed Environments</h2>
+<p>In my next (future) blog entry I'll go through using Security Group Exchange Protocol (SXP) to support mixed environments, where TrustSec and/or 802.1AE is not widely supported.</p>

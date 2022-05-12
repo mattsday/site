@@ -1,0 +1,354 @@
+<!-- Generator: GNU source-highlight 3.1.4
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><i><font color="#9A1900">#!/usr/bin/perl</font></i>
+<i><font color="#9A1900"># Opens your iTunes Music Library.xml, pulls out playlists to m3u files and</font></i>
+<i><font color="#9A1900"># does other wonderfully amazing things!</font></i>
+<i><font color="#9A1900"># </font></i>
+<i><font color="#9A1900"># See http://matt.fragilegeek.com/androidsync for configuration information</font></i>
+<i><font color="#9A1900">#</font></i>
+<i><font color="#9A1900"># Copyright 2011 Matt Day</font></i>
+<i><font color="#9A1900">#</font></i>
+<i><font color="#9A1900"># Copying and distribution of this file, with or without modification,</font></i>
+<i><font color="#9A1900"># are permitted in any medium without royalty provided the copyright</font></i>
+<i><font color="#9A1900"># notice and this notice are preserved.  This file is offered as-is,</font></i>
+<i><font color="#9A1900"># without any warranty.</font></i>
+
+
+<b><font color="#0000FF">use</font></b> Math<font color="#990000">::</font>Round<font color="#990000">;</font>
+<b><font color="#0000FF">use</font></b> File<font color="#990000">::</font>Copy<font color="#990000">;</font>
+
+<i><font color="#9A1900"># Base iTunes music directory</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$base_dir</font> <font color="#990000">=</font> <font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'HOME'</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">'/Music/iTunes'</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">$config_file</font> <font color="#990000">=</font> <font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'HOME'</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">"/.asyncrc"</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">$db_dir</font> <font color="#990000">=</font> <font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'HOME'</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">'/.async'</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">$itunes_xml</font> <font color="#990000">=</font> <font color="#FF0000">'iTunes Music Library.xml'</font><font color="#990000">;</font>
+
+<i><font color="#9A1900"># Some defaults</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$info</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$debug</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$verbose</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$no_copy</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$no_delete</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">sub</font></b> info<font color="#990000">;</font>
+<b><font color="#0000FF">sub</font></b> debug<font color="#990000">;</font>
+<b><font color="#0000FF">sub</font></b> verbose<font color="#990000">;</font>
+
+<i><font color="#9A1900"># Don't do album artwork by default:</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$album_artwork</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$ARGV</font><font color="#990000">[</font><font color="#993399">0</font><font color="#990000">]</font> ne <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<font color="#009900">$config_file</font> <font color="#990000">=</font> <font color="#009900">$ARGV</font><font color="#990000">[</font><font color="#993399">0</font><font color="#990000">];</font>
+	info <font color="#FF0000">"Using config file: "</font><font color="#990000">.</font><font color="#009900">$config_file</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">my</font></b> <font color="#009900">$pc</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$db_file</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">$destination</font> <font color="#990000">=</font> <font color="#FF0000">'/Volumes/SD CARD/Music'</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">@sync_playlists</font><font color="#990000">;</font>
+<b><font color="#0000FF">open</font></b><font color="#990000">(</font>CONFIG<font color="#990000">,</font> <font color="#009900">$config_file</font><font color="#990000">);</font>
+<b><font color="#0000FF">foreach</font></b><font color="#990000">(</font><font color="#FF0000">&lt;CONFIG&gt;</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">((!</font><font color="#FF0000">/^#/) and (/=/</font><font color="#990000">))</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">chomp</font></b><font color="#990000">;</font>
+		<b><font color="#0000FF">my</font></b> <font color="#990000">(</font><font color="#009900">$key</font><font color="#990000">,</font> <font color="#009900">$value</font><font color="#990000">)</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/=/</font><font color="#990000">);</font>
+		<font color="#009900">$base_dir</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'itunes'</font><font color="#990000">);</font>
+		<font color="#009900">$itunes_xml</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'itunes_xml'</font><font color="#990000">);</font>
+		<font color="#009900">$destination</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'dest'</font><font color="#990000">);</font>
+		<font color="#009900">@sync_playlists</font><font color="#990000">[</font><font color="#009900">$pc</font><font color="#990000">++]</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'playlist'</font><font color="#990000">);</font>
+		<font color="#009900">$verbose</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'verbose'</font><font color="#990000">);</font>
+		<font color="#009900">$debug</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'debug'</font><font color="#990000">);</font>
+		<font color="#009900">$info</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'info'</font><font color="#990000">);</font>
+		<font color="#009900">$no_copy</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'no_copy'</font><font color="#990000">);</font>
+		<font color="#009900">$db_dir</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'db_dir'</font><font color="#990000">);</font>
+		<font color="#009900">$no_delete</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'no_delete'</font><font color="#990000">);</font>
+		<font color="#009900">$db_file</font> <font color="#990000">=</font> <font color="#009900">$value</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">'db_file'</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">close</font></b><font color="#990000">(</font>CONFIG<font color="#990000">);</font>
+
+<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$db_file</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<font color="#009900">$db_file</font> <font color="#990000">=</font> <font color="#009900">$destination</font><font color="#990000">;</font>
+	<font color="#009900">$db_file</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/\///</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+	<font color="#009900">$db_file</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/ //</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$mod_database_file</font> <font color="#990000">=</font> <font color="#009900">$db_dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$db_file</font><font color="#990000">;</font>
+
+debug <font color="#FF0000">"Using db file: "</font><font color="#990000">.</font><font color="#009900">$mod_database_file</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+
+verbose <font color="#FF0000">"Reading database file: "</font><font color="#990000">.</font><font color="#009900">$mod_database_file</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">%mod_database</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">if</font></b> <font color="#990000">(-</font>e <font color="#009900">$mod_database_file</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">open</font></b><font color="#990000">(</font>DB<font color="#990000">,</font> <font color="#009900">$mod_database_file</font><font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#FF0000">&lt;DB&gt;</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">chomp</font></b><font color="#990000">;</font>
+		<b><font color="#0000FF">my</font></b> <font color="#990000">(</font><font color="#009900">$file</font><font color="#990000">,</font> <font color="#009900">$value</font><font color="#990000">)</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/\t/</font><font color="#990000">);</font>
+		<font color="#009900">$mod_database</font><font color="#FF0000">{</font><font color="#009900">$file</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$value</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">close</font></b><font color="#990000">(</font>DB<font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+<i><font color="#9A1900"># iTunes Music Library</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$itunes_xml</font> <font color="#990000">=</font> <font color="#009900">$base_dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$itunes_xml</font><font color="#990000">;</font>
+
+<i><font color="#9A1900">###### End config</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$tracks</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$added</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$removed</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$modified</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+
+<i><font color="#9A1900"># Load library</font></i>
+
+<i><font color="#9A1900"># I looked on CPAN and found nothing useful, so resorted to this kludge &gt;:D</font></i>
+<b><font color="#0000FF">open</font></b><font color="#990000">(</font>LIBRARY<font color="#990000">,</font> <font color="#009900">$itunes_xml</font><font color="#990000">);</font>
+
+<b><font color="#0000FF">our</font></b> <font color="#009900">$context</font> <font color="#990000">=</font> <font color="#FF0000">''</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%playlists</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$playlist_count</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$skip</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$active_key</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%names</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%artist</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%time</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%location</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%existing</font><font color="#990000">;</font>
+<b><font color="#0000FF">our</font></b> <font color="#009900">%modified</font><font color="#990000">;</font>
+
+<i><font color="#9A1900"># Scan Destination</font></i>
+info <font color="#FF0000">"Scanning current library at '"</font><font color="#990000">.</font><font color="#009900">$destination</font><font color="#990000">.</font><font color="#FF0000">"'\n"</font><font color="#990000">;</font>
+<b><font color="#000000">scan_dir</font></b><font color="#990000">(</font><font color="#009900">$destination</font><font color="#990000">);</font>
+
+<i><font color="#9A1900"># Remove playlists, we're gonna replace 'em all</font></i>
+<b><font color="#0000FF">opendir</font></b><font color="#990000">(</font>DIR<font color="#990000">,</font> <font color="#009900">$destination</font><font color="#990000">);</font>
+<b><font color="#0000FF">foreach</font></b><font color="#990000">(</font><b><font color="#0000FF">readdir</font></b><font color="#990000">(</font>DIR<font color="#990000">))</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#FF0000">/\.m3u$/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">unlink</font></b> <font color="#009900">$destination</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$_</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$no_delete</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+info <font color="#FF0000">"Done - $tracks items found\n"</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">closedir</font></b><font color="#990000">(</font>DIR<font color="#990000">);</font>
+
+info <font color="#FF0000">"Scanning iTunes library\n"</font><font color="#990000">;</font>
+<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#FF0000">&lt;LIBRARY&gt;</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">((</font><font color="#FF0000">/&lt;key&gt;(.*?)&lt;\/key&gt;$/</font><font color="#990000">)</font> <b><font color="#0000FF">and</font></b> <font color="#990000">(</font><font color="#009900">$playlist_count</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">))</font> <font color="#FF0000">{</font>
+		<font color="#009900">$active_key</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Name&lt;\/key&gt;&lt;string&gt;(.*?)&lt;\/string&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$names</font><font color="#FF0000">{</font><font color="#009900">$active_key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Artist&lt;\/key&gt;&lt;string&gt;(.*?)&lt;\/string&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$artist</font><font color="#FF0000">{</font><font color="#009900">$active_key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Total Time&lt;\/key&gt;&lt;integer&gt;(.*?)&lt;\/integer&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$time</font><font color="#FF0000">{</font><font color="#009900">$active_key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Location&lt;\/key&gt;&lt;string&gt;(.*?)&lt;\/string&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$active_key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Date Modified&lt;\/key&gt;&lt;date&gt;(.*?)&lt;\/date&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$mod_date</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+		<font color="#009900">$mod_date</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/-//</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$mod_date</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/T//</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$mod_date</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/Z//</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$mod_date</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/://</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$modified</font><font color="#FF0000">{</font><font color="#009900">$active_key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$mod_date</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$playlist_count</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Playlists&lt;\/key&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			info <font color="#FF0000">"Done\nScanning playlists...\n"</font><font color="#990000">;</font>
+			<font color="#009900">$playlist_count</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">else</font></b> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Name&lt;\/key&gt;&lt;string&gt;(.*?)&lt;\/string&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">my</font></b> <font color="#009900">$pl</font> <font color="#990000">=</font> <font color="#009900">$1</font><font color="#990000">;</font>
+			<font color="#009900">$skip</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+			debug <font color="#FF0000">"Found playlist '"</font><font color="#990000">.</font><font color="#009900">$pl</font><font color="#990000">.</font><font color="#FF0000">"'\n"</font><font color="#990000">;</font>
+			<b><font color="#0000FF">foreach</font></b> <b><font color="#0000FF">my</font></b> <font color="#009900">$desirable</font> <font color="#990000">(</font><font color="#009900">@sync_playlists</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$desirable</font> <font color="#990000">=~</font> <font color="#FF0000">/^$pl$/</font><b><font color="#0000FF">i</font></b><font color="#990000">)</font> <font color="#FF0000">{</font>
+					<font color="#009900">$context</font> <font color="#990000">=</font> <font color="#009900">$pl</font><font color="#990000">;</font>
+					<font color="#009900">$context</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+					<font color="#009900">$playlist_count</font><font color="#990000">++;</font>
+					<font color="#009900">$playlists</font><font color="#FF0000">{</font><font color="#009900">$context</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$pl</font><font color="#990000">;</font>
+					debug <font color="#FF0000">"Added playlist "</font><font color="#990000">.</font><font color="#009900">$context</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+					<font color="#009900">$skip</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+				<font color="#FF0000">}</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+		<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#009900">$skip</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#FF0000">/&lt;key&gt;Track ID&lt;\/key&gt;&lt;integer&gt;(.*?)&lt;\/integer&gt;/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<font color="#009900">$playlists</font><font color="#FF0000">{</font><font color="#009900">$context</font><font color="#FF0000">}</font> <font color="#990000">.=</font> <font color="#FF0000">','</font><font color="#990000">.</font><font color="#009900">$1</font><font color="#990000">;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">close</font></b><font color="#990000">(</font>LIBRARY<font color="#990000">);</font>
+<b><font color="#0000FF">foreach</font></b> <b><font color="#0000FF">my</font></b> <font color="#009900">$pl</font> <font color="#990000">(</font><font color="#009900">@sync_playlists</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$pll</font> <font color="#990000">=</font> <font color="#009900">$pl</font><font color="#990000">;</font>
+	<font color="#009900">$pll</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$playlists</font><font color="#FF0000">{</font><font color="#009900">$pll</font><font color="#FF0000">}</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		info <font color="#FF0000">'Warning: Playlist "'</font><font color="#990000">.</font><font color="#009900">$pl</font><font color="#990000">.</font><font color="#FF0000">'" not found!'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+info <font color="#FF0000">"Done\nCopying files...\n"</font><font color="#990000">;</font>
+<b><font color="#0000FF">foreach</font></b> <b><font color="#0000FF">my</font></b> <font color="#009900">$key</font> <font color="#990000">(</font><b><font color="#0000FF">keys</font></b> <font color="#009900">%playlists</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@list</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">','</font><font color="#990000">,</font> <font color="#009900">$playlists</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font><font color="#990000">);</font>
+	<b><font color="#0000FF">open</font></b><font color="#990000">(</font>PLAYLIST<font color="#990000">,</font> <font color="#FF0000">'&gt;'</font><font color="#990000">.</font><font color="#009900">$destination</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$list</font><font color="#990000">[</font><font color="#993399">0</font><font color="#990000">].</font><font color="#FF0000">'.m3u'</font><font color="#990000">);</font>
+	<b><font color="#0000FF">for</font></b> <font color="#990000">(</font><b><font color="#0000FF">my</font></b> <font color="#009900">$i</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font> <font color="#009900">$i</font> <font color="#990000">&lt;=</font> <font color="#009900">$#list</font><font color="#990000">;</font> <font color="#009900">$i</font><font color="#990000">++)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$index</font> <font color="#990000">=</font> <font color="#009900">$list</font><font color="#990000">[</font><font color="#009900">$i</font><font color="#990000">];</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/%20/ /</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/&amp;#38;/&amp;/</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/%23/#/</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/%5b/[/</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/%5d/]/</font><b><font color="#0000FF">g</font></b><font color="#990000">;</font>
+		<font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/file:\/\/localhost//</font><font color="#990000">;</font>
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$newloc</font> <font color="#990000">=</font> <font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">;</font>
+		<font color="#009900">$newloc</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/$base_dir//</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+
+		<font color="#009900">$newloc</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/\/iTunes Media\/(.*?)\//$destination\//</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+		<font color="#009900">$newloc</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+		<font color="#009900">$mod_database</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$modified</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$mod_database</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">);</font>
+		
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$existing</font><font color="#FF0000">{</font><font color="#009900">$newloc</font><font color="#FF0000">}</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">my</font></b> <font color="#009900">$newdir</font> <font color="#990000">=</font> <font color="#FF0000">''</font><font color="#990000">;</font>
+			<b><font color="#0000FF">my</font></b> <font color="#009900">@parts</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">'/'</font><font color="#990000">,</font> <font color="#009900">$newloc</font><font color="#990000">);</font>
+			<b><font color="#0000FF">for</font></b> <font color="#990000">(</font><b><font color="#0000FF">my</font></b> <font color="#009900">$j</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font> <font color="#009900">$j</font> <font color="#990000">&lt;</font> <font color="#009900">$#parts</font><font color="#990000">;</font> <font color="#009900">$j</font><font color="#990000">++)</font> <font color="#FF0000">{</font>
+				<font color="#009900">$newdir</font> <font color="#990000">.=</font> <font color="#009900">$parts</font><font color="#990000">[</font><font color="#009900">$j</font><font color="#990000">].</font><font color="#FF0000">'/'</font><font color="#990000">;</font>
+				<b><font color="#0000FF">if</font></b> <font color="#990000">(!-</font>d <font color="#009900">$newdir</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+					verbose <font color="#FF0000">"Making directory: \""</font><font color="#990000">.</font><font color="#009900">$newdir</font><font color="#990000">.</font><font color="#FF0000">"\"\n"</font><font color="#990000">;</font>
+					<b><font color="#0000FF">mkdir</font></b> <font color="#009900">$newdir</font> or <b><font color="#0000FF">die</font></b> <font color="#FF0000">"Failed to create directory "</font><font color="#990000">.</font><font color="#009900">$newdir</font><font color="#990000">;</font>
+				<font color="#FF0000">}</font>
+			<font color="#FF0000">}</font>
+			<b><font color="#0000FF">if</font></b> <font color="#990000">(!-</font>e <font color="#009900">$newloc</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				verbose <font color="#FF0000">"Copying "</font><font color="#990000">.</font><font color="#009900">$artist</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">' - '</font><font color="#990000">.</font><font color="#009900">$names</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+				<b><font color="#000000">copy</font></b><font color="#990000">(</font><font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">,</font><font color="#009900">$newloc</font><font color="#990000">)</font> or <b><font color="#0000FF">die</font></b> <font color="#FF0000">"Failed to copy file: "</font><font color="#990000">.</font><font color="#009900">$newloc</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$no_copy</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">);</font>
+				<font color="#009900">$added</font><font color="#990000">++;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+		<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#009900">$modified</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">&gt;</font> <font color="#009900">$mod_database</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			verbose <font color="#FF0000">"File changed, updating file: "</font><font color="#990000">.</font><font color="#009900">$newloc</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+			<b><font color="#000000">copy</font></b><font color="#990000">(</font><font color="#009900">$location</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">,</font><font color="#009900">$newloc</font><font color="#990000">)</font> or <b><font color="#0000FF">die</font></b> <font color="#FF0000">"Failed to copy file: "</font><font color="#990000">.</font><font color="#009900">$newloc</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$no_copy</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">);</font>
+			<font color="#009900">$mod_database</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$modified</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">;</font>
+			<font color="#009900">$modified</font><font color="#990000">++;</font>
+		<font color="#FF0000">}</font>
+
+		<font color="#009900">$existing</font><font color="#FF0000">{</font><font color="#009900">$newloc</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#993399">2</font><font color="#990000">;</font>
+
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$destkey</font> <font color="#990000">=</font> <font color="#009900">$newloc</font><font color="#990000">;</font>
+
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$time</font> <font color="#990000">=</font> <font color="#009900">$time</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$time</font> <font color="#990000">&gt;</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<font color="#009900">$time</font> <font color="#990000">=</font> <b><font color="#000000">round</font></b><font color="#990000">(</font><font color="#009900">$time</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font> <font color="#990000">/</font> <font color="#993399">1000</font><font color="#990000">);</font>
+		<font color="#FF0000">}</font>
+		<b><font color="#0000FF">print</font></b> PLAYLIST <font color="#FF0000">"#EXTINF:"</font><font color="#990000">.</font><font color="#009900">$time</font><font color="#990000">.</font><font color="#FF0000">","</font><font color="#990000">.</font><font color="#009900">$names</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">" - "</font><font color="#990000">.</font><font color="#009900">$artist</font><font color="#FF0000">{</font><font color="#009900">$index</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+		<font color="#009900">$newloc</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/$destination\///</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+		<b><font color="#0000FF">print</font></b> PLAYLIST <font color="#009900">$newloc</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">close</font></b><font color="#990000">(</font>PLAYLIST<font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+info <font color="#FF0000">"Done - $added added, $modified changed\n"</font><font color="#990000">;</font>
+
+verbose <font color="#FF0000">"Updating local database "</font><font color="#990000">.</font><font color="#009900">$mod_database_file</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+<b><font color="#0000FF">open</font></b><font color="#990000">(</font>DB<font color="#990000">,</font> <font color="#FF0000">"&gt;"</font><font color="#990000">.</font><font color="#009900">$mod_database_file</font><font color="#990000">);</font>
+<b><font color="#0000FF">foreach</font></b> <b><font color="#0000FF">my</font></b> <font color="#009900">$key</font> <font color="#990000">(</font><b><font color="#0000FF">sort</font></b> <font color="#FF0000">{</font> <font color="#009900">$a</font> <font color="#FF0000">&lt;=&gt;</font> <font color="#009900">$b</font> <font color="#FF0000">}</font> <b><font color="#0000FF">keys</font></b> <font color="#009900">%modified</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> DB <font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">"\t"</font><font color="#990000">.</font><font color="#009900">$modified</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">close</font></b><font color="#990000">(</font>DB<font color="#990000">);</font>
+verbose <font color="#FF0000">"Done\n"</font><font color="#990000">;</font>
+verbose <font color="#FF0000">"Checking for orphaned files...\n"</font><font color="#990000">;</font>
+
+<b><font color="#0000FF">foreach</font></b> <b><font color="#0000FF">my</font></b> <font color="#009900">$key</font> <font color="#990000">(</font><b><font color="#0000FF">keys</font></b> <font color="#009900">%existing</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$existing</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font> <font color="#990000">==</font> <font color="#993399">1</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		verbose <font color="#FF0000">"Removing "</font><font color="#990000">.</font><font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+		<font color="#009900">$removed</font><font color="#990000">--;</font>
+		<b><font color="#0000FF">unlink</font></b><font color="#990000">(</font><font color="#009900">$key</font><font color="#990000">)</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$no_delete</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+verbose <font color="#FF0000">"Done\n"</font><font color="#990000">;</font>
+verbose <font color="#FF0000">"Cleaning up directories...\n"</font><font color="#990000">;</font>
+<i><font color="#9A1900"># Run three times as a hack to avoid too much trouble :S</font></i>
+<b><font color="#000000">clean_up</font></b><font color="#990000">(</font><font color="#009900">$destination</font><font color="#990000">);</font>
+<b><font color="#000000">clean_up</font></b><font color="#990000">(</font><font color="#009900">$destination</font><font color="#990000">);</font>
+<b><font color="#000000">clean_up</font></b><font color="#990000">(</font><font color="#009900">$destination</font><font color="#990000">);</font>
+verbose <font color="#FF0000">"Done\n"</font><font color="#990000">;</font>
+
+
+info <font color="#FF0000">"Sync complete!\n"</font><font color="#990000">;</font>
+info <font color="#FF0000">"$modified changed, $added added, $removed removed, "</font><font color="#990000">.(</font><font color="#009900">$tracks</font><font color="#990000">+</font><font color="#009900">$added</font><font color="#990000">-</font><font color="#009900">$removed</font><font color="#990000">).</font><font color="#FF0000">" total\n"</font><font color="#990000">;</font>
+
+
+<b><font color="#0000FF">sub</font></b> clean_up <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$dir</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">opendir</font></b><font color="#990000">(</font>DIR<font color="#990000">,</font> <font color="#009900">$dir</font><font color="#990000">);</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$files</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@files</font> <font color="#990000">=</font> <b><font color="#0000FF">readdir</font></b><font color="#990000">(</font>DIR<font color="#990000">);</font>
+	<b><font color="#0000FF">closedir</font></b><font color="#990000">(</font>DIR<font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@files</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$item</font> <font color="#990000">=</font> <font color="#009900">$dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$_</font><font color="#990000">;</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(!</font><font color="#FF0000">/^\.\.?$/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<font color="#009900">$files</font><font color="#990000">++;</font>
+			<b><font color="#0000FF">if</font></b><font color="#990000">(-</font>d <font color="#009900">$item</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<b><font color="#000000">clean_up</font></b><font color="#990000">(</font><font color="#009900">$item</font><font color="#990000">);</font>
+			<font color="#FF0000">}</font>
+			<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/^\./</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				verbose <font color="#FF0000">"Hidden file found: "</font><font color="#990000">.</font><font color="#009900">$item</font><font color="#990000">.</font><font color="#FF0000">" (removed)\n"</font><font color="#990000">;</font>
+				<b><font color="#0000FF">unlink</font></b><font color="#990000">(</font><font color="#009900">$item</font><font color="#990000">)</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$no_delete</font> <font color="#990000">!=</font> <font color="#993399">1</font><font color="#990000">);</font>
+				<font color="#009900">$files</font><font color="#990000">--;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">((</font><font color="#009900">$files</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <b><font color="#0000FF">and</font></b> <font color="#990000">(</font><font color="#009900">$dir</font> <font color="#990000">!~</font> <font color="#FF0000">/^$destination\/?$/</font><font color="#990000">))</font> <font color="#FF0000">{</font>
+		verbose <font color="#FF0000">"Empty directory "</font><font color="#990000">.</font><font color="#009900">$dir</font><font color="#990000">.</font><font color="#FF0000">"... Removing\n"</font><font color="#990000">;</font>
+		<b><font color="#0000FF">rmdir</font></b><font color="#990000">(</font><font color="#009900">$dir</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+
+<b><font color="#0000FF">sub</font></b> scan_dir <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$dir</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">opendir</font></b><font color="#990000">(</font>SCAN<font color="#990000">,</font> <font color="#009900">$dir</font><font color="#990000">)</font> or <b><font color="#0000FF">die</font></b> <font color="#FF0000">"Unable to open directory at "</font><font color="#990000">.</font><font color="#009900">$dir</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@files</font> <font color="#990000">=</font> <b><font color="#0000FF">readdir</font></b><font color="#990000">(</font>SCAN<font color="#990000">);</font>
+	<b><font color="#0000FF">closedir</font></b><font color="#990000">(</font>SCAN<font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@files</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(!</font><font color="#FF0000">/^\.\.?$/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">if</font></b> <font color="#990000">(-</font>d <font color="#009900">$dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$_</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<b><font color="#000000">scan_dir</font></b><font color="#990000">(</font><font color="#009900">$dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$_</font><font color="#990000">);</font>
+			<font color="#FF0000">}</font>
+			<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#FF0000">/\.(m4a|mp3|m4v|mp4|aac)/</font><b><font color="#0000FF">i</font></b><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<b><font color="#0000FF">my</font></b> <font color="#009900">$key</font> <font color="#990000">=</font> <font color="#009900">$dir</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$_</font><font color="#990000">;</font>
+				<font color="#009900">$key</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+				<font color="#009900">$existing</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+				<font color="#009900">$tracks</font><font color="#990000">++;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> debug <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$output</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> <font color="#009900">$output</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$debug</font> <font color="#990000">==</font> <font color="#993399">1</font><font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> info <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$output</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> <font color="#009900">$output</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$info</font> <font color="#990000">==</font> <font color="#993399">1</font><font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> verbose <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$output</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> <font color="#009900">$output</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$verbose</font> <font color="#990000">==</font> <font color="#993399">1</font><font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+</tt></pre>

@@ -1,0 +1,25 @@
+<h1 style="blog_title">Demystifying 802.1X - Part 1 - The Basics</h1>
+<p>A huge interest of mine right now is using <a href="http://en.wikipedia.org/wiki/IEEE_802.1X">IEEE 802.1X</a> to secure access-layer networking. For many this represents a scary challenge as suddenly turning your campus network from something that is inherently open (and <em>insecure</em>) to something that is controlled and closed can cause endless issues.</p>
+
+<h2>Securing Networks - AAA Basics</h2>
+<p>As you may know, the basics of network security revolve around AAA - <strong>Authentication</strong>, <strong>Authorization</strong> and <strong>Accounting</strong>. Let's take each of these:
+<div style="padding-left: 4em;">
+<h3>Authentication</h3>
+<p>Your identity. For example, do you have a valid certificate or username + password?</p>
+<h3>Authorization</h3>
+<p>What you're allowed to do. For example, you can access internal blogs, but not development servers and source code</p>
+<h3>Accounting</h3>
+<p>What you're doing. Everything that happens is logged - such as failed/successful authentications. This can be used for troubleshooting and billing amongst other things.</p>
+</div>
+<h2>Monitor Mode - or how to make your life easier</h2>
+<p>The most scary thing about turning on 802.1X is that there will always be something that doesn't work. A forgotten-about printer, a Windows PC that doesn't have the service enabled or a stubborn linux user who doesn't want to play along. All of these exception cases build up in to something that quickly becomes unmanagable and a burden on the networking team.</p>
+<p>Monitor Mode is a marketing term of failing over to MAB (which is then whitelisted) with a port configured in open mode. In other words, you see all the 802.1X logs and correctly configured devices will work just fine. Incorrectly configured (and potentially malicious) devices will still work just fine, but you'll see all the failed logs to help pinpoint these issues.</p>
+<p>I know organisations that have run in Monitor Mode for years and it works really well for them. Having the logs without the headaches is a good balance for their business needs, whilst having the option at any time to switch to a full 802.1X deployment.</p>
+<h2>The Authentication-focus problem</h2>
+<p>I like to call out what I call the <em>Authentication-focus problem</em> as a key failure when assessing network security and the roll-out of 802.1X. All too often the focus is on purely authenticating users and based on this we let them on the network or not.</p>
+<p>In a traditional world where a user would have a fixed desktop PC or could be reasonably expected to just have a single laptop this worked OK. If they logged in with their AD credentials then they were authenticated fine, so let's give them full network access! No authentication? No access!</p>
+<p>The problem with this approach is that it's all or nothing - exception circumstances happen. If someone brings their own PC in then unless I have a full certificate infrastructure set up, the user can log in with PEAP and gain full access. Likewise, support issues occur when authentication fails due to expired passwords or new PCs that haven't been setup for Active Directory.</p>
+<h2>Authorization</h2>
+<p>Building in high quality authorization is the true answer. Using a central policy server such as the <a href="http://cisco.com/go/ise">Identity Services Engine</a>, additional information can be gathered about a device (time of day, type of device, location of the device and more). This can be added up to create a full <em>Authorization Profile</em> that gives custom access to the network. I will be talking more about Authorization Profiles and how to secure networks in future blog entries.</p>
+<p>The key is that authorization can be much more than just security. I can push QoS down to video endpoints, VLAN configuration to devices that belong in a different subnet, web redirects for services that are unavailable (showing an error page rather than a confusing timeout message).</p>
+<p>In my <a href="blog?entry=2014-07-14">next blog entry</a> I talk about how to secure a network and the various authorization options available</p>

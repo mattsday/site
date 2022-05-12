@@ -1,0 +1,211 @@
+<!-- Generator: GNU source-highlight 3.1.4
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><i><font color="#9A1900">#!/usr/bin/perl</font></i>
+<i><font color="#9A1900"># Usage: convflac &lt;filename.flac&gt; [fileout.m4a] [faac options]</font></i>
+
+<i><font color="#9A1900"># Commented for compatibility, uncomment if you have this</font></i>
+<i><font color="#9A1900">#use common::sense;</font></i>
+
+<i><font color="#9A1900"># Some global variables:</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$infile</font><font color="#990000">,</font> <b><font color="#0000FF">our</font></b> <font color="#009900">$outfile</font><font color="#990000">,</font> <b><font color="#0000FF">our</font></b> <font color="#009900">$faac_options</font> <font color="#990000">=</font> <font color="#FF0000">' '</font><font color="#990000">,</font> <b><font color="#0000FF">our</font></b> <font color="#009900">%mutation_map</font><font color="#990000">,</font> <b><font color="#0000FF">our</font></b> <font color="#009900">%settings</font><font color="#990000">;</font>
+
+<i><font color="#9A1900"># Check we have required programs</font></i>
+<b><font color="#000000">checkfaacflac</font></b><font color="#990000">();</font>
+
+<i><font color="#9A1900"># Read settings:</font></i>
+<b><font color="#000000">read_settings</font></b><font color="#990000">();</font>
+
+<i><font color="#9A1900"># If we have no arguments, show usage</font></i>
+<b><font color="#000000">noinfileerror</font></b><font color="#990000">()</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$#ARGV</font><font color="#990000">)</font> <font color="#990000">==</font> <font color="#990000">-</font><font color="#993399">1</font><font color="#990000">;</font>
+
+<i><font color="#9A1900"># grab input file from stdin</font></i>
+<b><font color="#0000FF">our</font></b> <font color="#009900">$infile</font> <font color="#990000">=</font> <font color="#009900">$ARGV</font><font color="#990000">[</font><font color="#993399">0</font><font color="#990000">];</font>
+<i><font color="#9A1900"># basic error checking (if it's empty somehow or if it doesn't exist)</font></i>
+<b><font color="#000000">noinfileerror</font></b><font color="#990000">()</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$infile</font> <b><font color="#0000FF">eq</font></b> <font color="#FF0000">''</font><font color="#990000">);</font>
+<b><font color="#000000">filenotexisterror</font></b><font color="#990000">()</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(!-</font>e <font color="#009900">$infile</font><font color="#990000">);</font>
+
+<i><font color="#9A1900"># Just one argument, so derive the name of the output file</font></i>
+<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$#ARGV</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<font color="#009900">$outfile</font> <font color="#990000">=</font> <font color="#009900">$infile</font><font color="#990000">;</font>
+	<font color="#009900">$outfile</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/\.flac$/.m4a/</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$outfile</font> <font color="#990000">!~</font> <font color="#FF0000">/\.m4a$/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$outfile</font> <font color="#990000">.=</font> <font color="#FF0000">'.m4a'</font><font color="#990000">;</font>
+		<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Warning - input file does not end in .flac, outputting to '</font><font color="#990000">.</font><font color="#009900">$outfile</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">elsif</font></b> <font color="#990000">(</font><font color="#009900">$#ARGV</font> <font color="#990000">&gt;=</font> <font color="#993399">1</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+	<font color="#009900">$outfile</font> <font color="#990000">=</font> <font color="#009900">$ARGV</font><font color="#990000">[</font><font color="#993399">1</font><font color="#990000">];</font>
+
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$#ARGV</font> <font color="#990000">&gt;</font> <font color="#993399">1</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">for</font></b> <font color="#990000">(</font><b><font color="#0000FF">my</font></b> <font color="#009900">$i</font> <font color="#990000">=</font> <font color="#993399">2</font><font color="#990000">;</font> <font color="#009900">$i</font> <font color="#990000">&lt;=</font> <font color="#009900">$#ARGV</font><font color="#990000">;</font> <font color="#009900">$i</font><font color="#990000">++)</font> <font color="#FF0000">{</font>
+			<font color="#009900">$faac_options</font> <font color="#990000">.=</font> <font color="#009900">$ARGV</font><font color="#990000">[</font><font color="#009900">$i</font><font color="#990000">].</font><font color="#FF0000">' '</font><font color="#990000">;</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#000000">convert</font></b><font color="#990000">();</font>
+
+<b><font color="#0000FF">sub</font></b> convert <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Converting "'</font><font color="#990000">.</font><font color="#009900">$infile</font><font color="#990000">.</font><font color="#FF0000">'" to "'</font><font color="#990000">.</font><font color="#009900">$outfile</font><font color="#990000">.</font><font color="#FF0000">'"'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<i><font color="#9A1900">#Get meta data</font></i>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$meta</font> <font color="#990000">=</font> <b><font color="#000000">metadata</font></b><font color="#990000">();</font>
+	<i><font color="#9A1900"># Construct command:</font></i>
+	<i><font color="#9A1900"># Default:</font></i>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$cmd</font> <font color="#990000">=</font> <font color="#FF0000">'flac '</font><font color="#990000">;</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$settings</font><font color="#FF0000">{</font><font color="#FF0000">'codec_flac'</font><font color="#FF0000">}</font> ne <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#009900">$settings</font><font color="#FF0000">{</font><font color="#FF0000">'codec_flac'</font><font color="#FF0000">}</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">else</font></b> <font color="#FF0000">{</font>
+		<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#FF0000">'-cd'</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+
+	<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#FF0000">' "'</font><font color="#990000">.</font><font color="#009900">$infile</font><font color="#990000">.</font><font color="#FF0000">'" | faac '</font><font color="#990000">;</font>
+
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$settings</font><font color="#FF0000">{</font><font color="#FF0000">'codec_faac'</font><font color="#FF0000">}</font> ne <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#009900">$settings</font><font color="#FF0000">{</font><font color="#FF0000">'codec_faac'</font><font color="#FF0000">}</font><font color="#990000">;</font>	
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">else</font></b> <font color="#FF0000">{</font>
+		<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#FF0000">'-q 300 -w -s '</font><font color="#990000">.</font><font color="#009900">$faac_options</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<font color="#009900">$cmd</font> <font color="#990000">.=</font> <font color="#FF0000">' '</font><font color="#990000">.</font><font color="#009900">$meta</font><font color="#990000">.</font><font color="#FF0000">' -o "'</font><font color="#990000">.</font><font color="#009900">$outfile</font><font color="#990000">.</font><font color="#FF0000">'" -'</font><font color="#990000">;</font>
+
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">"\n"</font><font color="#990000">.</font><font color="#FF0000">'Executing: '</font><font color="#990000">.</font><font color="#009900">$cmd</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$output</font> <font color="#990000">=</font> `<font color="#009900">$cmd</font> <font color="#990000">&gt;</font><font color="#FF0000">/dev/</font>null`<font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'done'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> metadata <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Obtaining meta data...'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$metaout</font> <font color="#990000">=</font> <font color="#FF0000">''</font><font color="#990000">;</font>
+	<i><font color="#9A1900"># Tags supported by faac as far as I know</font></i>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$unsupported</font> <font color="#990000">=</font> <font color="#FF0000">''</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@supported</font> <font color="#990000">=</font> <font color="#990000">(</font>
+		<font color="#FF0000">'artist'</font><font color="#990000">,</font>
+		<font color="#FF0000">'writer'</font><font color="#990000">,</font>
+		<font color="#FF0000">'title'</font><font color="#990000">,</font>
+		<font color="#FF0000">'genre'</font><font color="#990000">,</font>
+		<font color="#FF0000">'album'</font><font color="#990000">,</font>
+		<font color="#FF0000">'track'</font><font color="#990000">,</font>
+		<font color="#FF0000">'disc'</font><font color="#990000">,</font>
+		<font color="#FF0000">'year'</font><font color="#990000">,</font>
+		<font color="#FF0000">'comment'</font><font color="#990000">,</font>
+	<font color="#990000">);</font>
+	<i><font color="#9A1900">#Use metaflac to grab file info</font></i>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$metadata</font> <font color="#990000">=</font> `metaflac <font color="#990000">--</font>export<font color="#990000">-</font>tags<font color="#990000">-</font>to<font color="#990000">=-</font> <font color="#FF0000">"$infile"</font>`<font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@metatable</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/\n/</font><font color="#990000">,</font> <font color="#009900">$metadata</font><font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@metatable</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">chomp</font></b><font color="#990000">;</font>
+		<b><font color="#0000FF">my</font></b> <font color="#009900">$found</font> <font color="#990000">=</font> <font color="#993399">0</font><font color="#990000">;</font>
+		<b><font color="#0000FF">my</font></b> <font color="#990000">(</font><font color="#009900">$key</font><font color="#990000">,</font> <font color="#009900">$value</font><font color="#990000">)</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/=/</font><font color="#990000">);</font>
+		<i><font color="#9A1900"># Lower case key</font></i>
+		<font color="#009900">$key</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$mutation_map</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font> ne <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">print</font></b> <font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">' =&gt; '</font><font color="#990000">;</font>
+			<font color="#009900">$key</font> <font color="#990000">=</font> <font color="#009900">$mutation_map</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font><font color="#990000">;</font>
+		<font color="#FF0000">}</font>
+		<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@supported</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$_</font> <b><font color="#0000FF">eq</font></b> <font color="#009900">$key</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<font color="#009900">$metaout</font> <font color="#990000">.=</font> <font color="#FF0000">'--'</font><font color="#990000">.</font><font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">' "'</font><font color="#990000">.</font><font color="#009900">$value</font><font color="#990000">.</font><font color="#FF0000">'" '</font><font color="#990000">;</font>
+				<b><font color="#0000FF">print</font></b> <font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">"\t=\t"</font><font color="#990000">.</font><font color="#009900">$value</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+				<font color="#009900">$found</font> <font color="#990000">=</font> <font color="#993399">1</font><font color="#990000">;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$found</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<font color="#009900">$unsupported</font> <font color="#990000">.=</font> <font color="#009900">$key</font><font color="#990000">.</font><font color="#FF0000">', '</font><font color="#990000">;</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$unsupported</font> ne <font color="#FF0000">''</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Unsupported tags: '</font><font color="#990000">.</font><font color="#009900">$unsupported</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">return</font></b> <font color="#009900">$metaout</font><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> noinfileerror <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'No input flac file'</font><font color="#990000">.</font><font color="#FF0000">"\n\n"</font><font color="#990000">;</font>
+	<b><font color="#000000">showusage</font></b><font color="#990000">();</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> filenotexisterror <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Input file '</font><font color="#990000">.</font><font color="#009900">$infile</font><font color="#990000">.</font><font color="#FF0000">' not found'</font><font color="#990000">.</font><font color="#FF0000">"\n\n"</font><font color="#990000">;</font>
+	<b><font color="#000000">showusage</font></b><font color="#990000">();</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> showusage <font color="#FF0000">{</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Usage: convflac &lt;filein.flac&gt; [fileout.m4a]'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> <font color="#FF0000">'If no fileout is specified, then filein.m4a will be created'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">exit</font></b><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> checkfaacflac <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@apps</font> <font color="#990000">=</font> <font color="#990000">(</font>
+		<font color="#FF0000">'flac'</font><font color="#990000">,</font>
+		<font color="#FF0000">'metaflac'</font><font color="#990000">,</font>
+		<font color="#FF0000">'faac'</font><font color="#990000">,</font>
+	<font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@apps</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><b><font color="#000000">checkapp</font></b><font color="#990000">(</font><font color="#009900">$_</font><font color="#990000">)</font> <font color="#990000">==</font> <font color="#993399">0</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">print</font></b> <font color="#FF0000">'Error: Cannot find "'</font><font color="#990000">.</font><font color="#009900">$_</font><font color="#990000">.</font><font color="#FF0000">'" in your path. Please install it and try again.'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+			<b><font color="#0000FF">exit</font></b><font color="#990000">(-</font><font color="#993399">1</font><font color="#990000">);</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">return</font></b><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+<b><font color="#0000FF">sub</font></b> checkapp <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$app</font> <font color="#990000">=</font> <b><font color="#0000FF">shift</font></b><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">@path</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/:/</font><font color="#990000">,</font> <font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'PATH'</font><font color="#FF0000">}</font><font color="#990000">);</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#009900">@path</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">return</font></b> <font color="#993399">1</font> <b><font color="#0000FF">if</font></b> <font color="#990000">(-</font>e <font color="#009900">$_</font><font color="#990000">.</font><font color="#FF0000">'/'</font><font color="#990000">.</font><font color="#009900">$app</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">return</font></b> <font color="#993399">0</font><font color="#990000">;</font>
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> read_settings <font color="#FF0000">{</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$home</font> <font color="#990000">=</font> <font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'HOME'</font><font color="#FF0000">}</font><font color="#990000">;</font>
+	<b><font color="#0000FF">my</font></b> <font color="#009900">$settings</font> <font color="#990000">=</font> <font color="#009900">$home</font><font color="#990000">.</font><font color="#FF0000">'/.convflac'</font><font color="#990000">;</font>
+	<b><font color="#0000FF">if</font></b> <font color="#990000">(!-</font>e <font color="#009900">$settings</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">return</font></b> <b><font color="#0000FF">if</font></b> <font color="#990000">(</font><b><font color="#000000">create_settings</font></b><font color="#990000">()</font> <font color="#990000">==</font> <font color="#990000">-</font><font color="#993399">1</font><font color="#990000">);</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">open</font></b><font color="#990000">(</font>FHANDLE<font color="#990000">,</font> <font color="#009900">$settings</font><font color="#990000">)</font> or <b><font color="#0000FF">return</font></b> <font color="#990000">-</font><font color="#993399">1</font><font color="#990000">;</font>
+	<b><font color="#0000FF">foreach</font></b> <font color="#990000">(</font><font color="#FF0000">&lt;FHANDLE&gt;</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+		<b><font color="#0000FF">if</font></b> <font color="#990000">((!</font><font color="#FF0000">/^#/) and (/=/</font><font color="#990000">))</font> <font color="#FF0000">{</font>
+			<b><font color="#0000FF">my</font></b> <font color="#009900">@args</font> <font color="#990000">=</font> <b><font color="#0000FF">split</font></b><font color="#990000">(</font><font color="#FF0000">/=/</font><font color="#990000">),</font> <b><font color="#0000FF">my</font></b> <font color="#009900">$key</font><font color="#990000">,</font> <b><font color="#0000FF">my</font></b> <font color="#009900">$value</font> <font color="#990000">=</font> <font color="#009900">$_</font><font color="#990000">;</font>
+			<font color="#009900">$key</font> <font color="#990000">=</font> <font color="#009900">$args</font><font color="#990000">[</font><font color="#993399">0</font><font color="#990000">];</font>
+			<font color="#009900">$value</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/^$key=(.*?)/\1/</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+			<font color="#009900">$value</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/^\s(.*?)/\1/</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+			<font color="#009900">$key</font> <font color="#990000">=~</font> <b><font color="#0000FF">tr</font></b><font color="#FF0000">/[A-Z]/[a-z]/</font><font color="#990000">;</font>
+			<font color="#009900">$key</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/\s$//</font><font color="#990000">;</font>
+			<b><font color="#0000FF">chomp</font></b><font color="#990000">(</font><font color="#009900">$key</font><font color="#990000">);</font>
+			<b><font color="#0000FF">chomp</font></b><font color="#990000">(</font><font color="#009900">$value</font><font color="#990000">);</font>
+			<b><font color="#0000FF">if</font></b> <font color="#990000">(</font><font color="#009900">$key</font> <font color="#990000">!~</font> <font color="#FF0000">/^mutation_/</font><font color="#990000">)</font> <font color="#FF0000">{</font>
+				<font color="#009900">$settings</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$value</font><font color="#990000">;</font>
+			<font color="#FF0000">}</font>
+			<b><font color="#0000FF">else</font></b> <font color="#FF0000">{</font>
+				<font color="#009900">$key</font> <font color="#990000">=~</font> <b><font color="#0000FF">s</font></b><font color="#FF6600">/^mutation_(.*?)/\1/</font><b><font color="#0000FF">i</font></b><font color="#990000">;</font>
+				<font color="#009900">$mutation_map</font><font color="#FF0000">{</font><font color="#009900">$key</font><font color="#FF0000">}</font> <font color="#990000">=</font> <font color="#009900">$value</font><font color="#990000">;</font>
+			<font color="#FF0000">}</font>
+		<font color="#FF0000">}</font>
+	<font color="#FF0000">}</font>
+	<b><font color="#0000FF">close</font></b><font color="#990000">(</font>FHANDLE<font color="#990000">);</font>
+	
+<font color="#FF0000">}</font>
+
+<b><font color="#0000FF">sub</font></b> create_settings <font color="#FF0000">{</font>
+	<b><font color="#0000FF">open</font></b><font color="#990000">(</font>FHANDLE<font color="#990000">,</font> <font color="#FF0000">'&gt;'</font><font color="#990000">.</font><font color="#009900">$ENV</font><font color="#FF0000">{</font><font color="#FF0000">'HOME'</font><font color="#FF0000">}</font><font color="#990000">.</font><font color="#FF0000">'/.convflac'</font><font color="#990000">)</font> or <b><font color="#0000FF">return</font></b> <font color="#990000">-</font><font color="#993399">1</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# convflac config file'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# lines starting with # are comments, everything else is key=value'</font><font color="#990000">.</font><font color="#FF0000">"\n\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# Codec options - uncomment to make changes to quality settings'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# Default is -q 300 -w -s for faac, it\'s recommended you leave flac alone'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# See man flac and man faac for more info'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'#codec_faac = -q 300 -w -s'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'#codec_flac = -cd'</font><font color="#990000">.</font><font color="#FF0000">"\n\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'# Mutation options (for tags):'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'#mutation_flacname = faacname'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'mutation_tracknumber = track'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'mutation_notes = comment'</font><font color="#990000">.</font><font color="#FF0000">"\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">print</font></b> FHANDLE <font color="#FF0000">'mutation_date = year'</font><font color="#990000">.</font><font color="#FF0000">"\n\n"</font><font color="#990000">;</font>
+	<b><font color="#0000FF">close</font></b><font color="#990000">(</font>FH<font color="#990000">);</font>
+<font color="#FF0000">}</font>
+
+</tt></pre>

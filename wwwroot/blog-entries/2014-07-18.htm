@@ -1,0 +1,31 @@
+<h1 style="blog_title">Demystifying 802.1X - Part 3 - Authorization and dACLs</h1>
+<p>In an ongoing series of blog entries, I've been talking about 802.1X, from the <a href="blog?entry=2014-07-10">basics</a> to <a href="blog?entry=2014-07-14">VLAN override</a> as part of an authorization strategy. In this entry I'm going to cover using downloadable access control lists.</p>
+
+<h2>Authorization options</h2>
+<ul><li>VLANs (discussed <a href="blog?entry=2014-07-14">in a previous blog entry</a>)</li><li>Downloadable/Dynamic ACLs</li><li>Security Group Tagging</li></ul>
+<p>Today I'm going to go through dACLs and compare them to VLANs and how they're a little bit easier (but still not perfect!)</p>
+<h2>dACLs</h2>
+<p>dACLs at their core are access control lists which are applied on a <em>session</em> basis, rather than on an interface. This means that they are specific to a user and their current session. They are also typically managed centrally and pushed to a network device automatically.</p>
+<p>Let's take the same example as before:</p>
+<p style="text-align: center;"><img src="images/blog-access-topology" alt="Topology showing Regular Users, HR Directors and Guest Users going across a network to HR Servers, Public Internet and Intranet Services" /></p>
+
+<h2>Corporate Policy</h2>
+<table style="text-align: center; margin-left: auto; margin-right: auto; border: 1px solid black;">
+<tr><th>&nbsp;</th><th>HR Server<br />10.10.200.1</th><th>Public Services<br />10.10.210.1</th><th>Intranet Services<br />10.10.220.1</th></tr>
+<tr><th>Regular User</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>HR Director</th><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>Guest User</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/cross" alt="X" /></td></tr>
+</table>
+<p style="padding-top: 1em;">In this case I can configure my ACLs centrally. Here's an example for a regular user:</p>
+<pre>
+	deny   ip host 10.10.200.1
+	permit ip host 10.10.210.1
+	permit ip host 10.10.220.1</pre>
+<p>Note how the dACL doesn't define the source IP, only the destination? This is automatically populated by the network access device (your switch).</p>
+<h2>Scaling with dACLs</h2>
+<p>Unlike VLANs, dACLs don't require toplogy changes for new users. You could even mix different users in the same VLANs and provide different security to each of them. This is an increasingly common approach that I'm seeing where developers may need access to specific subnets that regular employees should not. Rather than complicating matters, a simple DACL pushed permitting them this access saves time and makes topology changes far easier.</p>
+<p>dACLs are also centrally managed and pushed out by a RADIUS server. This means that they can be updated much quicker and without changing a network devices running configuration.</p>
+<h2>Still dependent on Topology</h2>
+<p>Unfortunately there are still topology dependencies with dACLs. You still need to know the IP addresses of your servers and managing interaction between identity groups becomes very tricky (how would a dACL stop an HR Director and a Regular User from P2P traffic whilst still allowing access to common resources such as printers?).</p>
+<p>dACLs represent a good move away from VLANs and I would always consider them as a preferred starting point. VLANs are a neccessary evil in networking, but they shouldn't be the backbone on which we build network security.</p>
+

@@ -1,0 +1,48 @@
+<h1 style="blog_title">Demystifying 802.1X - Part 2 - Authorization and VLANs</h1>
+<p>In my <a href="blog?entry=2014-07-10">previous blog entry</a> I talked about 802.1X and Authorization. In this entry I'm going to expand on that and talk about some of the options you have available.</p>
+
+<h2>Your options</h2>
+<p>At the most basic level there are three generally used options to implement an authorization profile:
+<ul><li>VLANs</li><li>Downloadable/Dynamic ACLs</li><li>Security Group Tagging</li></ul>
+<p>This entry I'm going to discuss VLANs</p>
+<h2>VLANs</h2>
+<p>VLANs are the most common (and most basic) method of providing access-layer security. The idea is that I build up different security zones and deliminate them by VLANs. At each 'crossover' point I provide security (firewalls, access lists etc) and keep my network simple to manage.</p>
+<p>Let's take this simple example:</p>
+<p style="text-align: center;"><img src="images/blog-access-topology" alt="Topology showing Regular Users, HR Directors and Guest Users going across a network to HR Servers, Public Internet and Intranet Services" /></p>
+
+<h2>Corporate Policy</h2>
+<table style="text-align: center; margin-left: auto; margin-right: auto; border: 1px solid black;">
+<tr><th>&nbsp;</th><th>HR Server<br />10.10.200.1</th><th>Public Services<br />10.10.210.1</th><th>Intranet Services<br />10.10.220.1</th></tr>
+<tr><th>Regular User<br />(VLAN 100)</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>HR Director<br />(VLAN 110)</th><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td></tr>
+<tr><th>Guest User<br />(VLAN 120)</th><td><img width="20" height="20" src="images/cross" alt="X" /></td><td><img width="20" height="20" src="images/tick" alt="X" /></td><td><img width="20" height="20" src="images/cross" alt="X" /></td></tr>
+</table>
+<p style="padding-top: 1em;">By mapping a VLAN to each of these users and then having a subnet for each I can then create a simple policy. For example, I can give a regular user an IP in the range of <code>10.10.100.0 /24</code>, an HR Director an IP in the range <code>10.10.110.0 /24</code> and a guest user <code>10.10.120.0 /24</code>.</p>
+
+<p>When any user connects to the network, I look up in my authorization policies what group the user is (perhaps from Active Directory) and push down a dynamic VLAN assignment. That user is then tied to that IP address and VLAN assignment and I can build my security from there.</p>
+
+<p>For example for VLAN 100 I might apply the following Access Control List:</p>
+<pre>ip access-list extended REGULAR_USER
+	deny   ip 10.10.100.0 0.0.0.255 host 10.10.200.1
+	permit ip 10.10.100.0 0.0.0.255 host 10.10.210.1
+	permit ip 10.10.100.0 0.0.0.255 host 10.10.220.1
+</pre>
+<p>This works well as I can control exactly what's allowed between my inflection points. However, my security is tied to my topology. Any new VLANs, users or services mean that I will need to update all my ACL entries across my network</p>
+<h2>VLAN Hell</h2>
+<p>The challenge with VLANs is that they are notoriously difficult to keep in check. Although the above example is feasible, moves, adds and changes quickly make VLANs hard to scale. IP address pools can become exhausted and any topology change directly impacts my security architecture.</p>
+<p>I work with organisations that have teams of people updating ACLs, Firewall rules and so on because they're caught in <em>VLAN Hell</em>.</p>
+<p>VLANs also need to be spanned everywhere a user could conceivably go. If someone moves to a new office or starts hot desking, I have to rebuild a whole load of infrastructure to support that. Security policy becomes network policy and things become static on both sides for fear of breaking things.</p>
+<p>NAT is also a tricky area here - I need to ensure that any changes or address translation respects my original security intentions.</p>
+<h2>Platform Limitations</h2>
+<p>The best way to run 802.1X on a switch is to use multi-auth. To rewind a little bit, there are four main ways to configure port security on a Cisco switch:</p>
+<ul>
+	<li><strong>Single host</strong> - exactly what it says on the tin - one host is allowed, anything else will be rejected - <code>authentication host-mode single-host</code></li>
+	<li><strong>Multiple Hosts</strong> - <em>dangerous!</em> - the first connection gets authenticated and any subsequent sessions are allowed with the same policy as the first - <code>authentication host-mode multi-host</code></li>
+	<li><strong>Multiple Domain</strong> - authenticates two devices - an end device and a phone typically - <code>authentication host-mode multi-domain</code></li>
+	<li><strong>Multiple Auth</strong> - authenticate each session independently and support a single phone - <code>authentication host-mode multi-auth</code></li>
+</ul>
+<p>The trick here is that multi-auth is clearly the best mechanism as it treats each session independently allowing for flexible deployment options. This comes at the cost though on all current IOS releases and hardware platforms of not supporting VLAN override!</p>
+<p>The 3850, 3650 will both support this capability in a future release of code (I believe 3.7.0), meaning different users on the same access port can have completely different VLAN assignments.</p>
+<h2>Summary</h2>
+<p>VLANs are often seen as an easy way to start network security and are certainly the easiest when the network is simple and well-defined. However, it becomes quickly unmanagable and complex as time progresses and things change.</p>
+<p>Is there a better way? In my <a href="blog?entry=2014-07-18">next blog entry</a> I'll discuss dACLs and how they can make things a lot simpler.</p>
