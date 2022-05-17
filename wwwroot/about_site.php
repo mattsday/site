@@ -8,6 +8,8 @@
 
 <p>In 2019 I spruced it up with <a href="https://getbootstrap.com/">Bootstrap 4</a> but didn't change much of the content.</p>
 
+<p>However, in 2022 I moved the whole thing from a VM host to <a href="https://cloud.google.com/run">Cloud Run</a> in Google Cloud. It's free for the usage I get, it gets automatically built via a pipeline, and <a href="https://github.com/mattsday/site">the code is on GitHub</a>.</p>
+
 <h1>Source Code</h1>
 <p>The whole site is powered by <a href="site">site.php</a> - enjoy. Of interest may be the <a href="templates/top.tpl">top template</a>, <a href="templates/bottom.tpl">bottom template</a> and <a href="about_site?show=src">this very page</a>.</p>
 
