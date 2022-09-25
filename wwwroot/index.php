@@ -8,14 +8,9 @@
     <li>My <a href="blog">blog - mostly about technology and other thoughts</a></li>
     <li>My <a href="pubkey">Public Key</a></li>
     <li>My <a href="https://github.com/mattsday">GitHub repo</a></li>
-    <li>The <a href="systems">various computers and other systems I own</a></li>
+    <li>Some <a href="passions">things that I am passionate about</a></li>
     <li>A <a href="about_site">little bit more about this site</a></li>
     <li>My <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/vimrc">vimrc</a>, <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/muttrc">muttrc</a>, <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/zshrc">zshrc</a>, <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/bashrc">bashrc</a>, <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/screenrc">screenrc</a>, <a href="https://github.com/mattsday/dotfiles/blob/master/dotfiles/home/tmux.conf">tmux.conf</a></li>
-    <!--<li>A helpful <a href="local.conf">local.conf</a> for DevStack installations</li>-->
-    <!--li>A <a href="androidsync">script to sync my iTunes library to my android/car/other devices, including playlists</a></li>
-    <li>A <a href="convertflac">script to convert from FLAC to AAC whilst maintaining metadata</a></li>
-    <li>A <a href="mencoder">quick guide to compiling MPlayer for OSX</a></li>-->
-<!--    <li>My <a href="heroes">modern day hero</a> list</li>-->
 </ul>
 
 <?php

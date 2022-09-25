@@ -43,8 +43,8 @@ aria-label="Toggle navigation">
       <a class="nav-link" href="pubkey">PubKey</a>
     </li>
 	-->
-	<li class="nav-item" id="nav_systems">
-	  <a class="nav-link" href="systems">Systems</a>
+	<li class="nav-item" id="nav_passions">
+	  <a class="nav-link" href="passions">Passions</a>
 	</li>
 	<li class="nav-item" id="nav_code">
 	  <a class="nav-link" href="code">Code</a>

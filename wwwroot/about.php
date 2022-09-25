@@ -15,22 +15,23 @@
 <p>I love computers, apps and technology. Google is the perfect place for me! My favourite number is 93.</p>
 <h2>Brief History</h2>
 <ul>
+    <li><strong>1983</strong> - Born</li>
     <li><strong>2002 - 2005</strong> - Graduated from Cardiff University with a BSc in Computer Science</li>
     <li><strong>2005 - 2017</strong> - Cisco
     <ul>
-        <li>Joined as a grad, living in Amsterdam for a year</li>
+        <li>Joined as a grad, living in Amsterdam for a year (which was super fun)</li>
         <li>Ended up in their "cloud" team</li>
     </ul></li>
     <li><strong>2017 - 2018</strong> - Pivotal
     <ul>
         <li>Joined as a Platform Architect, focussed on Cloud Foundry</li>
-        <li>Picked up Spring Boot, running live demos at DevOxx etc</li>
+        <li>Picked up Spring Boot and loved the Developer Advocacy side</li>
     </ul></li>
     <li><strong>2018 - Now</strong> - Google Cloud
     <ul>
-        <li>Joined as a Customer Engineer in UK&amp;I Retail</li>
-        <li>Moved to the EMEA AppMod specialist team, focussed on Anthos &amp; so on</li>
-        <li>Now manage the UK&amp;I specialist CE team for App and Infrastructure Modernisation</li>
+        <li>Joined as a Customer Engineer specialising in App/Dev</li>
+        <li>Moved to the EMEA AppMod specialist team, focussed on Anthos &amp; so on - spent all my time talking about networking</li>
+        <li>Now lead the UK&amp;I specialist CE team for App and Infrastructure Modernisation</li>
     </ul></li>
 </ul>
 
